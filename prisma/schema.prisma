@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String              @id @default(uuid())
+  email         String              @unique
+  password      String
+  role          String              @default("customer")
+  name          String?
+  bulkUploads   bulk_upload_batch[]
+  notifications Notification[]
+  wishlist      Wishlist[]
+
+  @@map("user")
+}
+
+
+model Product {
+  id                     String                   @id @default(uuid())
+  slug                   String                   @unique
+  title                  String
+  mainImage              String?
+  price                  Int
+  rating                 Int                      @default(0)
+  description            String                   @db.Text
+  manufacturer           String?
+  inStock                Int                      @default(0)
+  totalStock             Int                      @default(0)        // 👈 ADD THIS LINE HERE
+  reorderLevel           Int                      @default(10)       // 👈 ADD THIS LINE HERE
+  categoryId             String
+  merchantId             String?
+  bulk_upload_item       bulk_upload_item[]
+  customer_order_product customer_order_product[]
+  deal                   Deal?
+  images                 Image[]                  @relation("ProductImages")
+  category               Category                 @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  merchant               Merchant?                @relation(fields: [merchantId], references: [id])
+  wishlist               Wishlist[]
+
+  @@index([categoryId], map: "product_categoryId_fkey")
+  @@index([merchantId], map: "product_merchantId_fkey")
+  @@map("product")
+}
+
+
+model Image {
+  imageID   String  @id @default(uuid())
+  productID String
+  image     String
+  product   Product @relation("ProductImages", fields: [productID], references: [id], onDelete: Cascade)
+
+  @@index([productID], map: "image_productID_fkey")
+  @@map("image")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?   @db.Text
+  icon        String?
+  image       String?
+  parentId    String?   // ✅ Already there
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  parent      Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryChildren")
+  products    Product[]
+
+  @@index([parentId])
+  @@map("category")
+}
+
+model Merchant {
+  id          String    @id @default(uuid())
+  name        String
+  email       String?   @unique
+  status      String    @default("pending")
+  address     String?
+  description String?   @db.Text
+  phone       String?
+  products    Product[]
+
+  @@map("merchant")
+}
+
+model Customer_order {
+  id                      String                   @id @default(uuid())
+  phone                   String
+  email                   String
+  company                 String?
+  apartment               String?
+  postalCode              String
+  dateTime                DateTime                 @default(now())
+  status                  String                   @default("pending")
+  city                    String
+  country                 String
+  address                 String                   @db.Text
+  firstName               String
+  lastName                String
+  totalPrice              Int
+  customer_order_products customer_order_product[]
+
+  @@map("customer_order")
+}
+
+model customer_order_product {
+  id              String         @id @default(uuid())
+  customerOrderId String
+  productId       String
+  quantity        Int
+  priceAtOrder    Int
+  customer_order  Customer_order @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([customerOrderId], map: "customer_order_product_customerOrderId_fkey")
+  @@index([productId], map: "customer_order_product_productId_fkey")
+  @@map("customer_order_product")
+}
+
+model Wishlist {
+  id        String  @id @default(uuid())
+  productId String
+  userId    String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId], map: "wishlist_productId_fkey")
+  @@map("wishlist")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "Notification_userId_idx")
+  @@map("notification")
+}
+
+model bulk_upload_batch {
+  id           String             @id @default(uuid())
+  fileName     String
+  status       String             @default("pending")
+  userId       String
+  failureCount Int                @default(0)
+  successCount Int                @default(0)
+  totalItems   Int                @default(0)
+  uploadedAt   DateTime           @default(now())
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        bulk_upload_item[]
+
+  @@index([userId], map: "bulk_upload_batch_userId_fkey")
+  @@map("bulk_upload_batch")
+}
+
+model bulk_upload_item {
+  id           String            @id @default(uuid())
+  batchId      String
+  productId    String?
+  status       String            @default("pending")
+  errorMessage String?           @db.Text
+  rowNumber    Int
+  batch        bulk_upload_batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  product      Product?          @relation(fields: [productId], references: [id])
+
+  @@index([batchId], map: "bulk_upload_item_batchId_fkey")
+  @@index([productId], map: "bulk_upload_item_productId_fkey")
+  @@map("bulk_upload_item")
+}
+
+model Deal {
+  id              String   @id @default(uuid())
+  productId       String   @unique
+  discountPercent Int
+  startDate       DateTime @default(now())
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("deal")
+}
+
+model Coupon {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  discountType        String
+  discountValue       Int
+  minOrderAmount      Int      @default(0)
+  maxDiscount         Int?
+  usageLimit          Int      @default(1)
+  usedCount           Int      @default(0)
+  totalDiscountGiven  Int      @default(0)  // 👈 NEW FIELD
+  expiryDate          DateTime
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  @@map("coupon")
+}
+
+model GiftCard {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  amount         Int
+  balance        Int
+  recipientEmail String?
+  purchasedBy    String?
+  isRedeemed     Boolean  @default(false)
+  expiryDate     DateTime
+  createdAt      DateTime @default(now())
+
+  @@map("gift_card")
+}
+
+model ContactInquiry {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String   @db.Text
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  @@map("contact_inquiry")
+}
