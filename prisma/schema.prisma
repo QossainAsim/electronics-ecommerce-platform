@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -43,8 +43,8 @@ model Product {
   merchant               Merchant?                @relation(fields: [merchantId], references: [id])
   wishlist               Wishlist[]
 
-  @@index([categoryId], map: "product_categoryId_fkey")
-  @@index([merchantId], map: "product_merchantId_fkey")
+  @@index([categoryId])
+  @@index([merchantId])
   @@map("product")
 }
 
@@ -55,7 +55,7 @@ model Image {
   image     String
   product   Product @relation("ProductImages", fields: [productID], references: [id], onDelete: Cascade)
 
-  @@index([productID], map: "image_productID_fkey")
+  @@index([productID])
   @@map("image")
 }
 
@@ -120,8 +120,8 @@ model customer_order_product {
   customer_order  Customer_order @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
   product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@index([customerOrderId], map: "customer_order_product_customerOrderId_fkey")
-  @@index([productId], map: "customer_order_product_productId_fkey")
+  @@index([customerOrderId])
+  @@index([productId])
   @@map("customer_order_product")
 }
 
@@ -133,7 +133,7 @@ model Wishlist {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
-  @@index([productId], map: "wishlist_productId_fkey")
+  @@index([productId])
   @@map("wishlist")
 }
 
@@ -147,7 +147,7 @@ model Notification {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId], map: "Notification_userId_idx")
+  @@index([userId])
   @@map("notification")
 }
 
@@ -163,7 +163,7 @@ model bulk_upload_batch {
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   items        bulk_upload_item[]
 
-  @@index([userId], map: "bulk_upload_batch_userId_fkey")
+  @@index([userId])
   @@map("bulk_upload_batch")
 }
 
@@ -177,8 +177,8 @@ model bulk_upload_item {
   batch        bulk_upload_batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   product      Product?          @relation(fields: [productId], references: [id])
 
-  @@index([batchId], map: "bulk_upload_item_batchId_fkey")
-  @@index([productId], map: "bulk_upload_item_productId_fkey")
+  @@index([batchId])
+  @@index([productId])
   @@map("bulk_upload_item")
 }
 
